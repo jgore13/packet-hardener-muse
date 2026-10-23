@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Packet Hardener</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1c1a; --muted: #6b6862; --line: #e3e0da;
+    --accent: #2f5d50; --warn: #9a3b2a; --ok: #2f6b3a; --code: #f1efea;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #161615; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9890; --line: #33322f;
+      --accent: #7fb8a6; --warn: #e08a76; --ok: #8cc79a; --code: #262624; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  h1 { font-size: 18px; margin: 0; }
+  h1 small { color: var(--muted); font-weight: 400; }
+  .pill { font: 600 12px/1 ui-monospace, Consolas, monospace; padding: 6px 10px; border-radius: 999px; border: 1px solid currentColor; }
+  .pill.not-ready { color: var(--warn); } .pill.accepted { color: var(--ok); } .pill.overridden { color: var(--accent); }
+  .mode { color: var(--muted); font-size: 13px; margin-right: 10px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; padding: 16px 24px 32px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 16px; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
+  select, textarea, input { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  textarea { min-height: 360px; font: 13px/1.5 ui-monospace, Consolas, monospace; resize: vertical; margin-top: 10px; }
+  button { font: 600 14px/1 inherit; padding: 10px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--panel); cursor: pointer; }
+  button.secondary { background: transparent; color: var(--accent); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+  pre { background: var(--code); border-radius: 6px; padding: 10px; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; margin: 0; }
+  .block { margin-top: 18px; } .block:first-child { margin-top: 0; }
+  .score { font-size: 40px; font-weight: 700; line-height: 1; }
+  .score small { font-size: 16px; color: var(--muted); font-weight: 400; }
+  .note { color: var(--muted); font-size: 13px; }
+  ul { margin: 6px 0 0; padding-left: 18px; } li { margin: 6px 0; }
+  .cls { font: 600 12px ui-monospace, Consolas, monospace; color: var(--accent); }
+  .miss { color: var(--warn); } .hit { color: var(--ok); }
+  .err { color: var(--warn); font-weight: 600; }
+  .grid2 { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
+  .grid2 dt { color: var(--muted); } .grid2 dd { margin: 0; font-family: ui-monospace, Consolas, monospace; word-break: break-word; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Packet Hardener <small>on Muse</small></h1>
+  <div><span class="mode" id="mode"></span><span class="pill not-ready" id="status">NOT_READY</span></div>
+</header>
+<main>
+  <section>
+    <h2>Task Packet</h2>
+    <select id="picker" aria-label="Load a test packet"><option value="">Paste your own, or load a test packet…</option></select>
+    <textarea id="packet" spellcheck="false" placeholder="Paste a Task Packet here."></textarea>
+    <div class="row">
+      <button id="run">Run</button>
+      <span class="note" id="runnote"></span>
+    </div>
+  </section>
+
+  <section id="out">
+    <div class="block">
+      <h2>Raw response</h2>
+      <pre id="raw">Nothing yet. Run a packet.</pre>
+      <p class="note" id="schema"></p>
+    </div>
+
+    <div class="block" hidden id="scoreBlock">
+      <h2>Score <span class="note">computed by rubric.ts, not by the model</span></h2>
+      <div class="score" id="score"></div>
+      <ul id="lines"></ul>
+    </div>
+
+    <div class="block" hidden id="findBlock">
+      <h2>Findings</h2>
+      <ul id="findings"></ul>
+      <dl class="grid2">
+        <dt>Red test</dt><dd id="redtest"></dd>
+        <dt>Rollback</dt><dd id="rollback"></dd>
+      </dl>
+    </div>
+
+    <div class="block" hidden id="hitBlock">
+      <h2>Hit rate on planted flaws</h2>
+      <div class="score" id="hitrate"></div>
+      <ul id="hits"></ul>
+    </div>
+
+    <div class="block" hidden id="chairBlock">
+      <h2>The Chair</h2>
+      <input id="ruling" maxlength="200" placeholder="One-line ruling (required)">
+      <div class="row">
+        <button id="accept">Accept</button>
+        <button id="override" class="secondary">Override</button>
+        <a id="download" hidden>Download receipt</a>
+      </div>
+      <p class="note" id="chairnote">The model hunted the failures. It did not approve the work.</p>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let packets = [];
+let run = null;
+
+function el(tag, text, cls) {
+  const n = document.createElement(tag);
+  if (text != null) n.textContent = text;
+  if (cls) n.className = cls;
+  return n;
+}
+
+function setStatus(s) {
+  const p = $("status");
+  p.textContent = s;
+  p.className = "pill " + s.toLowerCase().replace("_", "-");
+}
+
+function reset() {
+  run = null;
+  setStatus("NOT_READY");
+  for (const id of ["scoreBlock", "findBlock", "hitBlock", "chairBlock", "download"]) $(id).hidden = true;
+  $("ruling").value = "";
+  $("accept").disabled = $("override").disabled = false;
+}
+
+async function load() {
+  const r = await fetch("/api/packets").then((r) => r.json());
+  packets = r.packets;
+  $("mode").textContent = r.mode === "stub" ? "STUB mode: canned reply for packet B, no live call" : "LIVE: Muse";
+  for (const p of packets) {
+    const o = el("option", `${p.id}: ${p.label}`);
+    o.value = p.id;
+    $("picker").append(o);
+  }
+}
+
+$("picker").addEventListener("change", (e) => {
+  const p = packets.find((x) => x.id === e.target.value);
+  if (p) $("packet").value = p.text;
+  reset();
+});
+$("packet").addEventListener("input", reset);
+
+$("run").addEventListener("click", async () => {
+  reset();
+  $("run").disabled = true;
+  $("runnote").textContent = "Running one call…";
+  $("raw").textContent = "";
+  $("schema").textContent = "";
+  try {
+    const res = await fetch("/api/harden", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ packet: $("packet").value }),
+    });
+    const r = await res.json();
+    if (r.error) throw new Error(r.error);
+    $("raw").textContent = r.raw;
+    if (!r.ok) {
+      $("schema").replaceChildren(el("span", `Schema FAIL after ${r.attempts} calls: ${r.errors.join("; ")}`, "err"));
+      return;
+    }
+    run = r;
+    $("schema").textContent = `Schema PASS · ${r.attempts} call${r.attempts > 1 ? "s" : ""} (one retry allowed)`;
+
+    $("score").replaceChildren(document.createTextNode(r.score.score), el("small", " / 10"));
+    $("lines").replaceChildren(...r.score.lines.map((l) => el("li", `${l.points}  ${l.reason}`)));
+    $("scoreBlock").hidden = false;
+
+    $("findings").replaceChildren(...r.findings.failures.map((f) => {
+      const li = el("li");
+      li.append(el("span", f.class, "cls"), el("div", `“${f.quote}”`), el("div", f.why, "note"));
+      return li;
+    }));
+    $("redtest").textContent = r.findings.red_test;
+    $("rollback").textContent = r.findings.rollback;
+    $("findBlock").hidden = false;
+
+    if (r.hits) {
+      $("hitrate").replaceChildren(document.createTextNode(`${r.hits.found} of ${r.hits.total}`));
+      $("hits").replaceChildren(...r.hits.results.map((h) => el("li", `${h.hit ? "found" : "MISSED"}  ${h.id}  ${h.class}`, h.hit ? "hit" : "miss")));
+      $("hitBlock").hidden = false;
+    }
+    $("chairBlock").hidden = false;
+  } catch (e) {
+    $("schema").replaceChildren(el("span", e.message, "err"));
+  } finally {
+    $("run").disabled = false;
+    $("runnote").textContent = "";
+  }
+});
+
+async function rule(decision) {
+  const ruling = $("ruling").value.trim();
+  if (!ruling) { $("chairnote").textContent = "Write a one-line ruling first."; $("ruling").focus(); return; }
+  const res = await fetch("/api/rule", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ decision, ruling, packet: $("packet").value, run }),
+  });
+  const r = await res.json();
+  if (r.error) { $("chairnote").textContent = r.error; return; }
+  setStatus(decision);
+  $("accept").disabled = $("override").disabled = true;
+  const a = $("download");
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(r.receipt, null, 2)], { type: "application/json" }));
+  a.download = r.file.split("/").pop();
+  a.hidden = false;
+  $("chairnote").textContent = `Ruling exported: ${r.file}`;
+}
+$("accept").addEventListener("click", () => rule("ACCEPTED"));
+$("override").addEventListener("click", () => rule("OVERRIDDEN"));
+
+load();
+</script>
+</body>
+</html>

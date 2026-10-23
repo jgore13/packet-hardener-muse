@@ -8,6 +8,8 @@
   "scripts": {
     "stub": "node src/run.ts packets/B-software-build.md --stub",
     "live": "node src/run.ts packets/B-software-build.md",
+    "app": "node src/server.ts --stub",
+    "app:live": "node src/server.ts",
     "test": "node --test src/loop.test.ts"
   }
 }
