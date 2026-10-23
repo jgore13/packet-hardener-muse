@@ -1,0 +1,9 @@
+{
+  "packet": "packets/B-software-build.md",
+  "planted": [
+    { "id": "B1", "class": "self_contradiction", "anchors": ["erasure of their account", "audit log stays intact", "never deleted or modified"], "note": "Erasing personal data vs never touching audit_events rows that hold it." },
+    { "id": "B2", "class": "undefined_number", "anchors": ["risk score above 70"], "note": "Score has no formula; 70 means nothing." },
+    { "id": "B3", "class": "unfalsifiable_criterion", "anchors": ["erasure works"], "note": "Done-when cannot fail." },
+    { "id": "B4", "class": "self_reported_control", "anchors": ["compliance_status"], "note": "Status set by hand with no check behind it." }
+  ]
+}

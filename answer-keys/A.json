@@ -1,0 +1,9 @@
+{
+  "packet": "packets/A-service-business.md",
+  "planted": [
+    { "id": "A1", "class": "self_contradiction", "anchors": ["non-refundable", "full refund"], "note": "Requirement 2 and 3 cannot both hold." },
+    { "id": "A2", "class": "undefined_number", "anchors": ["reliability score"], "note": "No formula, no range, no definition of zero." },
+    { "id": "A3", "class": "unfalsifiable_criterion", "anchors": ["feels easy"], "note": "No test can go red on a feeling." },
+    { "id": "A4", "class": "self_reported_control", "anchors": ["background check complete"], "note": "Cleaner ticks their own box; no runnable check behind it." }
+  ]
+}

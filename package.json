@@ -1,0 +1,13 @@
+{
+  "name": "packet-hardener-muse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Packet Hardener on Muse: the model hunts failures, code scores, the Chair rules.",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "stub": "node src/run.ts packets/B-software-build.md --stub",
+    "live": "node src/run.ts packets/B-software-build.md",
+    "test": "node --test src/loop.test.ts"
+  }
+}

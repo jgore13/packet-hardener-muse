@@ -1,0 +1,9 @@
+{
+  "packet": "packets/C-operations-workflow.md",
+  "planted": [
+    { "id": "C1", "class": "self_contradiction", "anchors": ["within 4 hours", "friday qa batch"], "note": "4-hour restock vs wait for weekly batch inspection." },
+    { "id": "C2", "class": "undefined_number", "anchors": ["shrink rate passes 3%", "shrink rate"], "note": "3% of what, over what window, measured how." },
+    { "id": "C3", "class": "unfalsifiable_criterion", "anchors": ["in place"], "note": "Done-when cannot fail." },
+    { "id": "C4", "class": "self_reported_control", "anchors": ["cold chain verified"], "note": "Tick box with no temperature record behind it." }
+  ]
+}
