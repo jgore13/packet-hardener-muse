@@ -54,7 +54,7 @@
   <section>
     <h2>Task Packet</h2>
     <select id="picker" aria-label="Load a test packet"><option value="">Paste your own, or load a test packet…</option></select>
-    <textarea id="packet" spellcheck="false" placeholder="Paste a Task Packet here."></textarea>
+    <textarea aria-label="Task packet" id="packet" spellcheck="false" placeholder="Paste a Task Packet here."></textarea>
     <div class="row">
       <button id="run">Run</button>
       <span class="note" id="runnote"></span>
@@ -77,6 +77,8 @@
     <div class="block" hidden id="findBlock">
       <h2>Findings</h2>
       <ul id="findings"></ul>
+      <h2>Blockers</h2>
+      <ul id="blockers"></ul>
       <dl class="grid2">
         <dt>Red test</dt><dd id="redtest"></dd>
         <dt>Rollback</dt><dd id="rollback"></dd>
@@ -91,7 +93,7 @@
 
     <div class="block" hidden id="chairBlock">
       <h2>The Chair</h2>
-      <input id="ruling" maxlength="200" placeholder="One-line ruling (required)">
+      <input aria-label="One-line ruling" id="ruling" maxlength="200" placeholder="One-line ruling (required)">
       <div class="row">
         <button id="accept">Accept</button>
         <button id="override" class="secondary">Override</button>
@@ -106,6 +108,8 @@
 const $ = (id) => document.getElementById(id);
 let packets = [];
 let run = null;
+let revision = 0;
+let downloadURL = null;
 
 function el(tag, text, cls) {
   const n = document.createElement(tag);
@@ -121,7 +125,12 @@ function setStatus(s) {
 }
 
 function reset() {
+  revision++;
+  if (downloadURL) { URL.revokeObjectURL(downloadURL); downloadURL = null; }
   run = null;
+  $("raw").textContent = "Nothing yet. Run a packet.";
+  $("schema").textContent = "";
+  $("chairnote").textContent = "The model hunted the failures. It did not approve the work.";
   setStatus("NOT_READY");
   for (const id of ["scoreBlock", "findBlock", "hitBlock", "chairBlock", "download"]) $(id).hidden = true;
   $("ruling").value = "";
@@ -148,6 +157,8 @@ $("packet").addEventListener("input", reset);
 
 $("run").addEventListener("click", async () => {
   reset();
+  const requestVersion = revision;
+  const packet = $("packet").value;
   $("run").disabled = true;
   $("runnote").textContent = "Running one call…";
   $("raw").textContent = "";
@@ -156,16 +167,17 @@ $("run").addEventListener("click", async () => {
     const res = await fetch("/api/harden", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ packet: $("packet").value }),
+      body: JSON.stringify({ packet }),
     });
     const r = await res.json();
+    if (revision !== requestVersion || $("packet").value !== packet) return;
     if (r.error) throw new Error(r.error);
     $("raw").textContent = r.raw;
     if (!r.ok) {
       $("schema").replaceChildren(el("span", `Schema FAIL after ${r.attempts} calls: ${r.errors.join("; ")}`, "err"));
       return;
     }
-    run = r;
+    run = { ...r, packet };
     $("schema").textContent = `Schema PASS · ${r.attempts} call${r.attempts > 1 ? "s" : ""} (one retry allowed)`;
 
     $("score").replaceChildren(document.createTextNode(r.score.score), el("small", " / 10"));
@@ -174,9 +186,10 @@ $("run").addEventListener("click", async () => {
 
     $("findings").replaceChildren(...r.findings.failures.map((f) => {
       const li = el("li");
-      li.append(el("span", f.class, "cls"), el("div", `“${f.quote}”`), el("div", f.why, "note"));
+      li.append(el("span", f.class, "cls"), el("div", `“${f.quote}”`), el("div", f.why, "note"), el("div", `Fix: ${f.fix}`));
       return li;
     }));
+    $("blockers").replaceChildren(...(r.findings.blockers.length ? r.findings.blockers.map((b) => el("li", b)) : [el("li", "None reported.")]));
     $("redtest").textContent = r.findings.red_test;
     $("rollback").textContent = r.findings.rollback;
     $("findBlock").hidden = false;
@@ -188,7 +201,7 @@ $("run").addEventListener("click", async () => {
     }
     $("chairBlock").hidden = false;
   } catch (e) {
-    $("schema").replaceChildren(el("span", e.message, "err"));
+    if (revision === requestVersion) $("schema").replaceChildren(el("span", e.message, "err"));
   } finally {
     $("run").disabled = false;
     $("runnote").textContent = "";
@@ -196,27 +209,37 @@ $("run").addEventListener("click", async () => {
 });
 
 async function rule(decision) {
+  const selected = run;
+  const requestVersion = revision;
+  if (!selected || selected.packet !== $("packet").value) { $("chairnote").textContent = "Run this packet before ruling."; return; }
   const ruling = $("ruling").value.trim();
   if (!ruling) { $("chairnote").textContent = "Write a one-line ruling first."; $("ruling").focus(); return; }
-  const res = await fetch("/api/rule", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ decision, ruling, packet: $("packet").value, run }),
-  });
-  const r = await res.json();
-  if (r.error) { $("chairnote").textContent = r.error; return; }
-  setStatus(decision);
   $("accept").disabled = $("override").disabled = true;
-  const a = $("download");
-  a.href = URL.createObjectURL(new Blob([JSON.stringify(r.receipt, null, 2)], { type: "application/json" }));
-  a.download = r.file.split("/").pop();
-  a.hidden = false;
-  $("chairnote").textContent = `Ruling exported: ${r.file}`;
+  try {
+    const res = await fetch("/api/rule", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision, ruling, packet: selected.packet, run_id: selected.run_id }),
+    });
+    const r = await res.json();
+    if (revision !== requestVersion || run !== selected) return;
+    if (r.error) throw new Error(r.error);
+    setStatus(r.receipt.decision);
+    const a = $("download");
+    downloadURL = URL.createObjectURL(new Blob([JSON.stringify(r.receipt, null, 2)], { type: "application/json" }));
+    a.href = downloadURL;
+    a.download = r.file.split("/").pop(); a.hidden = false;
+    $("chairnote").textContent = `Ruling exported: ${r.file}`;
+  } catch (e) {
+    if (revision === requestVersion && run === selected) {
+      $("chairnote").textContent = e.message;
+      $("accept").disabled = $("override").disabled = false;
+    }
+  }
 }
 $("accept").addEventListener("click", () => rule("ACCEPTED"));
 $("override").addEventListener("click", () => rule("OVERRIDDEN"));
 
-load();
+load().catch((e) => { $("schema").textContent = `Could not load packets: ${e.message}`; });
 </script>
 </body>
 </html>

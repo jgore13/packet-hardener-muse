@@ -4,12 +4,14 @@
   "private": true,
   "type": "module",
   "description": "Packet Hardener on Muse: the model hunts failures, code scores, the Chair rules.",
-  "engines": { "node": ">=24" },
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "stub": "node src/run.ts packets/B-software-build.md --stub",
     "live": "node src/run.ts packets/B-software-build.md",
     "app": "node src/server.ts --stub",
-    "app:live": "node src/server.ts",
-    "test": "node --test src/loop.test.ts"
+    "app:live": "node src/server.ts --live",
+    "test": "node --test src/*.test.ts proof/*.test.ts"
   }
 }

@@ -18,6 +18,6 @@ export function score(packet: string, findings: Findings): { score: number; line
   const lines: ScoreLine[] = found.map((c) => ({ reason: `failure class found: ${c}`, points: -RUBRIC.perClassFound }));
   if (!/^#{2,}\s*red test\b/im.test(packet)) lines.push({ reason: "packet has no ## Red test section", points: -RUBRIC.missingRedTest });
   if (!/^#{2,}\s*rollback\b/im.test(packet)) lines.push({ reason: "packet has no ## Rollback section", points: -RUBRIC.missingRollback });
-  const total = lines.reduce((s, l) => s + l.points, RUBRIC.start);
+  const total = lines.reduce<number>((s, l) => s + l.points, RUBRIC.start);
   return { score: Math.max(RUBRIC.floor, total), lines };
 }

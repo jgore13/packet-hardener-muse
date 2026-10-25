@@ -1,0 +1,34 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, readdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { createApp } from "./server.ts";
+
+test("stub workflow binds receipts to server runs and refuses mismatches/replays", async (t) => {
+  const receiptsDir = mkdtempSync(join(tmpdir(), "packet-hardener-test-")); let now = Date.now();
+  const server = createApp({ stub: true, receiptsDir, now: () => now });
+  await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise<void>((resolve, reject) => server.close(e => e ? reject(e) : resolve())));
+  const base = `http://127.0.0.1:${(server.address() as any).port}`;
+  const post = (path: string, data: any) => fetch(base + path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) });
+  const packets = await fetch(base + "/api/packets").then(r => r.json());
+  assert.equal(packets.mode, "stub"); const packet = packets.packets.find((p: any) => p.id === "B").text;
+  const analysis = await post("/api/harden", { packet }).then(r => r.json());
+  assert.equal(analysis.status, "NOT_READY"); assert.equal(analysis.hits.found, 4);
+  const ruling = { decision: "ACCEPTED", ruling: "Synthetic test only", packet, run_id: analysis.run_id };
+  assert.equal((await post("/api/rule", { ...ruling, run_id: "invented", run: analysis })).status, 409);
+  assert.equal((await post("/api/rule", { ...ruling, packet: packet + "changed" })).status, 409);
+  assert.equal((await post("/api/rule", { ...ruling, ruling: "" })).status, 400);
+  const saved = await post("/api/rule", { ...ruling, run: { findings: { failures: [] }, raw: "FORGED" } }).then(r => r.json());
+  assert.equal(saved.receipt.findings.failures.length, 4); assert.notEqual(saved.receipt.raw, "FORGED");
+  assert.equal(saved.receipt.packet, packet); assert.equal(saved.receipt.packet_sha256, createHash("sha256").update(packet).digest("hex"));
+  assert.equal(saved.receipt.mode, "stub"); assert.deepEqual(saved.receipt.usage, [null]);
+  const same = await post("/api/rule", ruling).then(r => r.json()); assert.deepEqual(same, saved);
+  assert.equal(readdirSync(receiptsDir).length, 1); assert.equal((await post("/api/rule", { ...ruling, decision: "OVERRIDDEN" })).status, 409);
+  assert.deepEqual(JSON.parse(readFileSync(join(receiptsDir, saved.file.split("/").at(-1)), "utf8")), saved.receipt);
+  now += 15 * 60_000; assert.equal((await post("/api/rule", ruling)).status, 409);
+  assert.equal((await post("/api/harden", { packet: "x".repeat(50_001) })).status, 400);
+  assert.equal((await post("/api/harden", null)).status, 400);
+});

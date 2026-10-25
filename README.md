@@ -22,3 +22,38 @@ node src/run.ts packets/A-service-business.md
 npm test
 ```
 Node 24+, no dependencies.
+
+## Local integration and receipts
+
+The server starts in canned mode by default; live mode requires `npm run app:live`
+(explicit `--live`). Stub mode does not load API keys. The configured default is
+`https://api.meta.ai/v1`, model `muse-spark-1.3`, using Chat Completions, a 30-second
+timeout per call and `max_completion_tokens: 2048`. At most one retry occurs for
+malformed/off-schema findings; HTTP, connection and timeout errors are not retried.
+Input is limited to 50,000 UTF-8 bytes. Usage is retained per attempt when returned;
+absent usage stays unknown. These are request limits, not a currency cost guarantee.
+See [Meta's API guide](https://dev.meta.ai/docs/protocols/chat-completions).
+
+Findings include suggested fixes and blockers. Editing a packet invalidates its
+analysis/ruling display. A ruling references the original server-held run and exact
+packet; client-supplied findings cannot replace that run. Runs expire after fifteen
+minutes or server restart. Repeating the same ruling returns the same receipt;
+changing an already saved ruling is refused. CLI choices and one-line rulings are
+validated before writing. This is a local single-user demonstration, not a hosted
+authentication/authorization system.
+
+## Proof Receipt
+
+Knowing is proving every thought. This receipt is the proof.
+
+The independent [Proof Receipt module](proof/README.md) signs a completed session
+export locally with OpenSSL, chains receipts using SHA-256, and verifies with only
+the export, receipt and retained public key. It leaves the existing session flow
+and prompt unchanged. No key or session is sent to a network service. A changed
+export byte produces `PROOF_FAILED` and a nonzero exit code. Keep a trusted public
+key and tail hash to detect key substitution or ledger truncation.
+
+All tests run offline (`npm test`), using canned/mock provider responses, loopback
+HTTP and generated test signing keys. No live Muse quality or credit use is proven
+by these tests. A live three-packet evaluation and hackathon submission remain
+separate approvals. No schedules are installed.

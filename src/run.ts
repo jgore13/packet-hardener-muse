@@ -2,6 +2,8 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import { cliDecision, validateRuling } from "./ruling.ts";
 import { createInterface } from "node:readline/promises";
 import { harden } from "./muse.ts";
 import { score } from "./rubric.ts";
@@ -9,12 +11,12 @@ import { hitRate, type Planted } from "./hitrate.ts";
 import { STUB_REPLY } from "./stub.ts";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-if (existsSync(join(root, ".env.local"))) process.loadEnvFile(join(root, ".env.local"));
 
 const args = process.argv.slice(2);
 const packetPath = resolve(args.find((a) => !a.startsWith("--")) ?? join(root, "packets/B-software-build.md"));
 const stub = args.includes("--stub");
 const chair = !args.includes("--no-chair");
+if (!stub && existsSync(join(root, ".env.local"))) process.loadEnvFile(join(root, ".env.local"));
 
 const packet = readFileSync(packetPath, "utf8");
 const line = (s = "") => console.log(s);
@@ -37,7 +39,8 @@ if (!result.ok) {
 const f = result.findings;
 line();
 line("── Findings ─────────────────────────────────");
-for (const x of f.failures) line(`  ${x.class}: "${x.quote}"\n      ${x.why}`);
+for (const x of f.failures) line(`  ${x.class}: "${x.quote}"\n      ${x.why}\n      Fix: ${x.fix}`);
+for (const blocker of f.blockers) line(`  Blocker: ${blocker}`);
 line(`  red test: ${f.red_test}`);
 line(`  rollback: ${f.rollback}`);
 
@@ -64,17 +67,25 @@ line("Status: NOT_READY");
 if (!chair) process.exit(0);
 
 const rl = createInterface({ input: process.stdin, output: process.stdout });
-const choice = (await rl.question("Chair: (a)ccept or (o)verride? ")).trim().toLowerCase();
-const ruling = (await rl.question("One-line ruling: ")).trim();
-rl.close();
+let choice, ruling;
+try {
+  choice = (await rl.question("Chair: (a)ccept or (o)verride? ")).trim().toLowerCase();
+  ruling = (await rl.question("One-line ruling: ")).trim();
+} finally { rl.close(); }
+let accepted;
+try { accepted = validateRuling(cliDecision(choice), ruling); }
+catch (e) { line((e as Error).message); process.exit(1); }
 
 const receipt = {
-  packet: basename(packetPath),
+  packet_file: basename(packetPath),
+  packet,
+  packet_sha256: createHash("sha256").update(packet).digest("hex"),
   at: new Date().toISOString(),
   mode: stub ? "stub" : "live",
-  model: stub ? null : process.env.MUSE_MODEL,
-  decision: choice.startsWith("a") ? "ACCEPTED" : "OVERRIDDEN",
-  ruling,
+  model: result.model,
+  ...accepted,
+  attempts: result.attempts,
+  usage: result.usage,
   score: s.score,
   hit_rate: hits ? `${hits.found}/${hits.total}` : null,
   findings: f,
@@ -82,5 +93,5 @@ const receipt = {
 };
 mkdirSync(join(root, "receipts"), { recursive: true });
 const out = join(root, "receipts", `${receipt.at.replace(/[:.]/g, "-")}-${basename(packetPath, ".md")}.json`);
-writeFileSync(out, JSON.stringify(receipt, null, 2));
+writeFileSync(out, JSON.stringify(receipt, null, 2), { flag: "wx" });
 line(`Status: ${receipt.decision}. Receipt: ${out}`);
