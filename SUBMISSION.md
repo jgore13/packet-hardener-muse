@@ -13,7 +13,10 @@ before anyone builds.
    a red test, a rollback, blockers. One retry if the JSON is off-schema. The raw reply is shown.
 3. **Code scores.** `src/rubric.ts`: start 10, minus 2 per failure class found, minus 1 if the
    packet has no `## Red test`, minus 1 if it has no `## Rollback`, floor 0. The model never scores.
-4. **The Chair rules.** Status is NOT_READY until a person clicks Accept or Override with a
+4. **Shout the successes.** Next to the score, a display-only view names what the packet does
+   well: self-beautification, perfect number, perfect acceptance criterion, ideal control. A class
+   is held when no failure of its pair was found. It never changes the score.
+5. **The Chair rules.** Status is NOT_READY until a person clicks Accept or Override with a
    one-line ruling, saved as a receipt. Muse never approves its own work.
 
 ## Why it matters (Build for Your World)

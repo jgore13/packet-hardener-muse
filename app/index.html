@@ -80,6 +80,13 @@
       <ul id="lines"></ul>
     </div>
 
+    <div class="block" hidden id="successBlock">
+      <h2>What the packet does well <span class="note">display only, not a score</span></h2>
+      <div class="score" id="held"></div>
+      <ul id="successes"></ul>
+      <p class="note">Held means this run found no failure of the paired class. It never changes the score.</p>
+    </div>
+
     <div class="block" hidden id="findBlock">
       <h2>Findings</h2>
       <ul id="findings"></ul>
@@ -145,7 +152,7 @@ function reset() {
   $("schema").textContent = "";
   $("chairnote").textContent = "Status stays NOT_READY until you Accept or Override. The model hunted the failures; it did not approve the work.";
   setStatus("NOT_READY");
-  for (const id of ["scoreBlock", "findBlock", "hitBlock", "rawBlock", "chairBlock", "download"]) $(id).hidden = true;
+  for (const id of ["scoreBlock", "successBlock", "findBlock", "hitBlock", "rawBlock", "chairBlock", "download"]) $(id).hidden = true;
   $("ruling").value = "";
   $("accept").disabled = $("override").disabled = false;
 }
@@ -162,6 +169,20 @@ async function load() {
   // Open on packet B so a judge needs one click.
   const b = packets.find((p) => p.id === "B");
   if (b && !$("packet").value) { $("packet").value = b.text; $("picker").value = "B"; }
+}
+
+// Chair ruling 2026-10-27: score the failure, shout the successes. Display only.
+const SUCCESS_VIEW = [
+  ["self_contradiction", "self-beautification"],
+  ["undefined_number", "perfect number"],
+  ["unfalsifiable_criterion", "perfect acceptance criterion"],
+  ["self_reported_control", "ideal control"],
+];
+function successView(failures) {
+  return SUCCESS_VIEW.map(([cls, label]) => {
+    const n = failures.filter((f) => f.class === cls).length;
+    return { cls, label, n, held: n === 0 };
+  });
 }
 
 const norm = (s) => s.replace(/\r\n/g, "\n").trim();
@@ -210,6 +231,12 @@ $("run").addEventListener("click", async () => {
     $("score").replaceChildren(document.createTextNode(r.score.score), el("small", " / 10"));
     $("lines").replaceChildren(...r.score.lines.map((l) => el("li", `${l.points}  ${l.reason}`)));
     $("scoreBlock").hidden = false;
+
+    const view = successView(r.findings.failures);
+    $("held").replaceChildren(document.createTextNode(`${view.filter((v) => v.held).length} of ${view.length}`), el("small", " held"));
+    $("successes").replaceChildren(...view.map((v) => el("li",
+      v.held ? `HELD  ${v.label}` : `not yet  ${v.label}  (${v.n} ${v.cls} finding${v.n > 1 ? "s" : ""})`, v.held ? "hit" : "miss")));
+    $("successBlock").hidden = false;
 
     $("findings").replaceChildren(...r.findings.failures.map((f) => {
       const li = el("li");

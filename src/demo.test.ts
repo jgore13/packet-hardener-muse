@@ -88,3 +88,29 @@ test("live results name the model; editing clears score, raw and source", async 
   assert.equal(p.get("scoreBlock").hidden, true); assert.equal(p.get("rawBlock").hidden, true);
   assert.equal(p.get("source").textContent, "Nothing yet. Press Run.");
 });
+
+const allFour = { ...reply, score: { score: 0, lines: [] },
+  findings: { ...reply.findings, failures: ["self_contradiction", "undefined_number", "unfalsifiable_criterion", "self_reported_control"].map((c) => ({ class: c, quote: "q", why: "w", fix: "f" })) } };
+const text = (n: any) => (n.children ?? []).map((c: any) => typeof c === "string" ? c : c.textContent).join("");
+
+test("success view: packet B style reply holds 0 of 4 and leaves the score alone", async () => {
+  const p = page(); p.edit("packet"); const pending = p.click("run"); p.requests[0].resolve(allFour); await pending;
+  assert.equal(text(p.get("held")), "0 of 4 held"); assert.equal(text(p.get("score")), "0 / 10");
+  assert.deepEqual(p.get("successes").children.map((li: any) => li.className), ["miss", "miss", "miss", "miss"]);
+  assert.equal(p.get("successBlock").hidden, false); assert.equal(p.get("status").textContent, "NOT_READY");
+});
+
+test("success view names the four success classes and holds those with no paired failure", async () => {
+  const p = page(); p.edit("packet"); const pending = p.click("run"); p.requests[0].resolve(reply); await pending;
+  const lines = p.get("successes").children.map((li: any) => li.textContent);
+  assert.deepEqual(lines, ["HELD  self-beautification", "not yet  perfect number  (1 undefined_number finding)",
+    "HELD  perfect acceptance criterion", "HELD  ideal control"]);
+  assert.equal(text(p.get("held")), "3 of 4 held"); assert.equal(text(p.get("score")), "8 / 10");
+});
+
+test("success view hides on edit and never shows on a schema failure", async () => {
+  const p = page(); p.edit("packet"); let pending = p.click("run"); p.requests[0].resolve(reply); await pending;
+  p.edit("changed"); assert.equal(p.get("successBlock").hidden, true);
+  pending = p.click("run"); p.requests[1].resolve({ ok: false, attempts: 2, errors: ["bad"], raw: "x" }); await pending;
+  assert.equal(p.get("successBlock").hidden, true);
+});
