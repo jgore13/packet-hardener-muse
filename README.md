@@ -8,6 +8,12 @@ A build agent fills every gap with a guess. The hardener finds the places a gues
 
 The four failure classes: self-contradiction, undefined number, unfalsifiable acceptance criterion, self-reported control.
 
+## Live status
+The first live call (packet B, `muse-spark-1.3`, `https://api.meta.ai/v1`) returned
+**Muse API 402 Payment Required**: the key was accepted, but no credits were usable.
+Until a live run lands, every result in this repo comes from the canned stub reply
+for packet B, and the screen says so. No live score has been claimed.
+
 ## Proof
 Three synthetic packets (service business, software build, operations workflow) carry 12 planted failures, 4 each. The answer keys in `answer-keys/` never go to the model. Each run reports a hit rate.
 

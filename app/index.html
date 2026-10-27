@@ -42,14 +42,20 @@
   .err { color: var(--warn); font-weight: 600; }
   .grid2 { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
   .grid2 dt { color: var(--muted); } .grid2 dd { margin: 0; font-family: ui-monospace, Consolas, monospace; word-break: break-word; }
+  .flow { margin: 0; padding: 10px 24px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+  .flow b { color: var(--ink); font-weight: 600; }
+  @media (max-width: 860px) { .flow { padding: 10px 16px; } }
+  .source { font-weight: 600; margin: 0; }
+  .source.stub { color: var(--warn); }
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <header>
   <h1>Packet Hardener <small>on Muse</small></h1>
-  <div><span class="mode" id="mode"></span><span class="pill not-ready" id="status">NOT_READY</span></div>
+  <div><span class="mode" id="mode"></span><span class="pill not-ready" id="status" title="Stays NOT_READY until the Chair clicks Accept">NOT_READY</span></div>
 </header>
+<p class="flow"><b>1</b> Packet in · <b>2</b> Muse finds failures (one call, schema-checked JSON) · <b>3</b> Code scores it (rubric.ts, never the model) · <b>4</b> Chair rules: NOT_READY until Accept</p>
 <main>
   <section>
     <h2>Task Packet</h2>
@@ -63,14 +69,14 @@
 
   <section id="out">
     <div class="block">
-      <h2>Raw response</h2>
-      <pre id="raw">Nothing yet. Run a packet.</pre>
+      <p class="source" id="source">Nothing yet. Press Run.</p>
       <p class="note" id="schema"></p>
     </div>
 
     <div class="block" hidden id="scoreBlock">
       <h2>Score <span class="note">computed by rubric.ts, not by the model</span></h2>
       <div class="score" id="score"></div>
+      <p class="note">Start 10 · −2 per failure class · −1 if the packet has no ## Red test · −1 if no ## Rollback · floor 0</p>
       <ul id="lines"></ul>
     </div>
 
@@ -91,6 +97,11 @@
       <ul id="hits"></ul>
     </div>
 
+    <div class="block" hidden id="rawBlock">
+      <h2>Raw response <span class="note">exactly what came back</span></h2>
+      <pre id="raw"></pre>
+    </div>
+
     <div class="block" hidden id="chairBlock">
       <h2>The Chair</h2>
       <input aria-label="One-line ruling" id="ruling" maxlength="200" placeholder="One-line ruling (required)">
@@ -99,7 +110,7 @@
         <button id="override" class="secondary">Override</button>
         <a id="download" hidden>Download receipt</a>
       </div>
-      <p class="note" id="chairnote">The model hunted the failures. It did not approve the work.</p>
+      <p class="note" id="chairnote">Status stays NOT_READY until you Accept or Override. The model hunted the failures; it did not approve the work.</p>
     </div>
   </section>
 </main>
@@ -128,11 +139,13 @@ function reset() {
   revision++;
   if (downloadURL) { URL.revokeObjectURL(downloadURL); downloadURL = null; }
   run = null;
-  $("raw").textContent = "Nothing yet. Run a packet.";
+  $("raw").textContent = "";
+  $("source").textContent = "Nothing yet. Press Run.";
+  $("source").className = "source";
   $("schema").textContent = "";
-  $("chairnote").textContent = "The model hunted the failures. It did not approve the work.";
+  $("chairnote").textContent = "Status stays NOT_READY until you Accept or Override. The model hunted the failures; it did not approve the work.";
   setStatus("NOT_READY");
-  for (const id of ["scoreBlock", "findBlock", "hitBlock", "chairBlock", "download"]) $(id).hidden = true;
+  for (const id of ["scoreBlock", "findBlock", "hitBlock", "rawBlock", "chairBlock", "download"]) $(id).hidden = true;
   $("ruling").value = "";
   $("accept").disabled = $("override").disabled = false;
 }
@@ -146,6 +159,18 @@ async function load() {
     o.value = p.id;
     $("picker").append(o);
   }
+  // Open on packet B so a judge needs one click.
+  const b = packets.find((p) => p.id === "B");
+  if (b && !$("packet").value) { $("packet").value = b.text; $("picker").value = "B"; }
+}
+
+const norm = (s) => s.replace(/\r\n/g, "\n").trim();
+function sourceLabel(r, packet) {
+  if (r.mode !== "stub") return { text: `Live Muse call${r.model ? ` · ${r.model}` : ""}`, cls: "source" };
+  const b = packets.find((p) => p.id === "B");
+  const isB = b && norm(b.text) === norm(packet);
+  return { text: isB ? "Canned stub reply for packet B. Not a live Muse result."
+    : "Canned stub reply for packet B. Not a live Muse result, and not about this packet.", cls: "source stub" };
 }
 
 $("picker").addEventListener("change", (e) => {
@@ -161,8 +186,7 @@ $("run").addEventListener("click", async () => {
   const packet = $("packet").value;
   $("run").disabled = true;
   $("runnote").textContent = "Running one call…";
-  $("raw").textContent = "";
-  $("schema").textContent = "";
+  $("source").textContent = "";
   try {
     const res = await fetch("/api/harden", {
       method: "POST",
@@ -172,7 +196,10 @@ $("run").addEventListener("click", async () => {
     const r = await res.json();
     if (revision !== requestVersion || $("packet").value !== packet) return;
     if (r.error) throw new Error(r.error);
+    const src = sourceLabel(r, packet);
+    $("source").textContent = src.text; $("source").className = src.cls;
     $("raw").textContent = r.raw;
+    $("rawBlock").hidden = false;
     if (!r.ok) {
       $("schema").replaceChildren(el("span", `Schema FAIL after ${r.attempts} calls: ${r.errors.join("; ")}`, "err"));
       return;
