@@ -37,7 +37,7 @@ test("walkthrough quotes only the numbers the code computes", async () => {
 });
 
 test("walkthrough packet D: both sections present, one planted class found scores 8 and holds 3 of 4", () => {
-  const D = read("../WALKTHROUGH.md").match(/## Packet D[\s\S]*?```markdown\n([\s\S]*?)```/)![1];
+  const D = read("../WALKTHROUGH.md").match(/## Packet D[\s\S]*?```markdown\r?\n([\s\S]*?)```/)![1];
   const one = { failures: [{ class: "undefined_number", quote: "popularity score above 60", why: "w", fix: "f" }], red_test: "t", rollback: "r", blockers: [] } as any;
   assert.equal(score(D, { ...one, failures: [] }).score, 10);
   assert.equal(score(D, one).score, 8);

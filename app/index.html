@@ -6,46 +6,66 @@
 <title>Packet Hardener</title>
 <style>
   :root {
-    --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1c1a; --muted: #6b6862; --line: #e3e0da;
-    --accent: #2f5d50; --warn: #9a3b2a; --ok: #2f6b3a; --code: #f1efea;
+    --bg: #f5f5f2; --panel: #ffffff; --well: #fafaf8; --ink: #141413; --muted: #6e6b64; --line: #e6e3dc;
+    --accent: #1f5b4c; --accent-ink: #ffffff; --warn: #a33a24; --ok: #2c6e3f; --code: #f2f0eb;
+    --shadow: 0 1px 2px rgba(20, 20, 19, .04), 0 8px 24px rgba(20, 20, 19, .05);
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
   }
   @media (prefers-color-scheme: dark) {
-    :root { --bg: #161615; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9890; --line: #33322f;
-      --accent: #7fb8a6; --warn: #e08a76; --ok: #8cc79a; --code: #262624; }
+    :root { --bg: #111110; --panel: #1b1b19; --well: #161614; --ink: #efeee9; --muted: #9a968d; --line: #2e2d2a;
+      --accent: #86c2ae; --accent-ink: #111110; --warn: #ec8f79; --ok: #93d0a2; --code: #23231f; --shadow: none; }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--line); }
-  h1 { font-size: 18px; margin: 0; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased; }
+  header, .flow, main { max-width: 1240px; margin-left: auto; margin-right: auto; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 28px 32px 6px; }
+  h1 { font-size: 24px; letter-spacing: -.02em; margin: 0; }
   h1 small { color: var(--muted); font-weight: 400; }
-  .pill { font: 600 12px/1 ui-monospace, Consolas, monospace; padding: 6px 10px; border-radius: 999px; border: 1px solid currentColor; }
+  .status-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  .pill { font: 700 12px/1 var(--mono); letter-spacing: .05em; padding: 9px 14px; border-radius: 999px; border: 1.5px solid currentColor; }
   .pill.not-ready { color: var(--warn); } .pill.accepted { color: var(--ok); } .pill.overridden { color: var(--accent); }
-  .mode { color: var(--muted); font-size: 13px; margin-right: 10px; }
-  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; padding: 16px 24px 32px; }
-  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 16px; } }
-  section { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
-  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 10px; }
-  select, textarea, input { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
-  textarea { min-height: 360px; font: 13px/1.5 ui-monospace, Consolas, monospace; resize: vertical; margin-top: 10px; }
-  button { font: 600 14px/1 inherit; padding: 10px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: var(--panel); cursor: pointer; }
+  .mode { color: var(--muted); font-size: 13px; }
+  .flow { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin-top: 10px; margin-bottom: 0; padding: 0 32px; }
+  .flow li { margin: 0; font-size: 13px; color: var(--muted); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; }
+  .flow b { color: var(--accent); font-weight: 700; margin-right: 4px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 24px; align-items: start; padding: 24px 32px 56px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px 16px 40px; } header { padding: 20px 16px 4px; } .flow { padding: 0 16px; } }
+  @media (min-width: 901px) { #in { position: sticky; top: 16px; } }
+  section { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 22px; min-width: 0; box-shadow: var(--shadow); }
+  h2 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 12px; }
+  h2 .note { text-transform: none; letter-spacing: 0; font-weight: 400; }
+  select, textarea, input { width: 100%; font: inherit; color: var(--ink); background: var(--well); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+  select:focus, textarea:focus, input:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  textarea { min-height: 400px; font: 13px/1.6 var(--mono); resize: vertical; margin-top: 12px; }
+  button { font: 600 15px/1 inherit; padding: 13px 24px; border-radius: 10px; border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; transition: transform .08s ease, opacity .15s ease; }
+  button:hover:not(:disabled) { opacity: .92; } button:active:not(:disabled) { transform: translateY(1px); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  #run { min-width: 150px; }
   button.secondary { background: transparent; color: var(--accent); }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  .row { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
-  pre { background: var(--code); border-radius: 6px; padding: 10px; font: 12px/1.45 ui-monospace, Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; margin: 0; }
-  .block { margin-top: 18px; } .block:first-child { margin-top: 0; }
-  .score { font-size: 40px; font-weight: 700; line-height: 1; }
-  .score small { font-size: 16px; color: var(--muted); font-weight: 400; }
+  .row { display: flex; gap: 10px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  #download { color: var(--accent); font-weight: 600; }
+  pre { background: var(--code); border-radius: 10px; padding: 12px 14px; font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; margin: 0; }
+  .block { margin-top: 30px; } .block:first-child { margin-top: 0; }
+  .verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 18px; }
+  @media (max-width: 560px) { .verdict { grid-template-columns: 1fr; } }
+  .verdict .block { margin: 0; padding: 18px; background: var(--well); border: 1px solid var(--line); border-radius: 14px; }
+  .score { font-size: 60px; font-weight: 700; letter-spacing: -.035em; line-height: 1; margin: 2px 0 10px; font-variant-numeric: tabular-nums; }
+  .score small { font-size: 18px; letter-spacing: 0; color: var(--muted); font-weight: 400; }
   .note { color: var(--muted); font-size: 13px; }
-  ul { margin: 6px 0 0; padding-left: 18px; } li { margin: 6px 0; }
-  .cls { font: 600 12px ui-monospace, Consolas, monospace; color: var(--accent); }
+  ul { margin: 6px 0 0; padding: 0; list-style: none; } li { margin: 8px 0; }
+  #lines li, #successes li { font-size: 14px; line-height: 1.4; margin: 6px 0; }
+  #hits li { font: 13px/1.45 var(--mono); }
+  .hit::before { content: "● "; } .miss::before { content: "○ "; }
+  #findings li { padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--well); }
+  #findings li > div:nth-child(2) { margin: 6px 0 4px; font-style: italic; }
+  #blockers li::before { content: "— "; color: var(--muted); }
+  .cls { font: 700 11px var(--mono); letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
   .miss { color: var(--warn); } .hit { color: var(--ok); }
   .err { color: var(--warn); font-weight: 600; }
-  .grid2 { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 14px; }
-  .grid2 dt { color: var(--muted); } .grid2 dd { margin: 0; font-family: ui-monospace, Consolas, monospace; word-break: break-word; }
-  .flow { margin: 0; padding: 10px 24px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 13px; }
-  .flow b { color: var(--ink); font-weight: 600; }
-  @media (max-width: 860px) { .flow { padding: 10px 16px; } }
-  .source { font-weight: 600; margin: 0; }
+  .grid2 { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 14px; margin-top: 16px; }
+  .grid2 dt { color: var(--muted); } .grid2 dd { margin: 0; font-family: var(--mono); font-size: 13px; word-break: break-word; }
+  .source { font-size: 16px; font-weight: 600; margin: 0; }
   .source.stub { color: var(--warn); }
   [hidden] { display: none !important; }
 </style>
@@ -53,11 +73,16 @@
 <body>
 <header>
   <h1>Packet Hardener <small>on Muse</small></h1>
-  <div><span class="mode" id="mode"></span><span class="pill not-ready" id="status" title="Stays NOT_READY until the Chair clicks Accept">NOT_READY</span></div>
+  <div class="status-wrap"><span class="mode" id="mode"></span><span class="pill not-ready" id="status" title="Stays NOT_READY until the Chair clicks Accept">NOT_READY</span></div>
 </header>
-<p class="flow"><b>1</b> Packet in · <b>2</b> Muse finds failures (one call, schema-checked JSON) · <b>3</b> Code scores it (rubric.ts, never the model) · <b>4</b> Chair rules: NOT_READY until Accept</p>
+<ol class="flow">
+  <li><b>1</b>Packet in</li>
+  <li><b>2</b>Muse finds failures (one call, schema-checked JSON)</li>
+  <li><b>3</b>Code scores it (rubric.ts, never the model)</li>
+  <li><b>4</b>Chair rules: NOT_READY until Accept</li>
+</ol>
 <main>
-  <section>
+  <section id="in">
     <h2>Task Packet</h2>
     <select id="picker" aria-label="Load a test packet"><option value="">Paste your own, or load a test packet…</option></select>
     <textarea aria-label="Task packet" id="packet" spellcheck="false" placeholder="Paste a Task Packet here."></textarea>
@@ -73,6 +98,7 @@
       <p class="note" id="schema"></p>
     </div>
 
+    <div class="verdict">
     <div class="block" hidden id="scoreBlock">
       <h2>Score <span class="note">computed by rubric.ts, not by the model</span></h2>
       <div class="score" id="score"></div>
@@ -85,6 +111,7 @@
       <div class="score" id="held"></div>
       <ul id="successes"></ul>
       <p class="note">Held means this run found no failure of the paired class. It never changes the score.</p>
+    </div>
     </div>
 
     <div class="block" hidden id="findBlock">
